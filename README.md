@@ -57,3 +57,33 @@
 ### H2 데이터베이스 설치
 
 -	H2 버전은 부트에 맞게 받을 것
+
+-	처음에 웹 화면에 접속 시 주의 (JDBC URL 부분 다음과 같이 입력)
+
+	-	최초: jdbc:h2:~/datajpa
+	-	이후: jdbc:h2:tcp://localhost/~/datajpa
+
+### 스프링 데이터 JPA와 DB 설정, 동작 확인
+
+-	properties 지우고 yml 로 설정파일 사용
+
+	-	show_sql 는 jpa가 실행하는 쿼리를 콘솔에 남김
+	-	org.hibernate.SQL: debug 을 통해 로그에 남길 것
+
+-	동작테스트
+
+	-	부트 테스트는 @SpringBootTest 로 쉽게 가능
+
+	-	jpa의 모든 변경은 트랜잭션 안에서 이뤄줘야함 @Transactional 사용할 것
+
+	-	테스트 시 쿼리가 안보이는 건 springboottest가 transactional이 있으면 끝나고 롤백을 시켜버림
+
+-	같은 트랜잭션 내에서는 영속성컨텍스트의 동일성 보장됨
+
+-	로그에 남는 쿼리의 파리미터에 ? 로 표시되는데, 설정으로 확인할 수 있음
+
+	-	org.hibernate.type: trace
+
+	-	하지만 외부 라이브러리를 사용하면 더 쉽게 볼 수 있음 (운영환경 적용 시에는 성능 테스트가 필수라고 함)
+
+	-	p6spy
