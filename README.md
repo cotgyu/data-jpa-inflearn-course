@@ -90,8 +90,8 @@
 
 ---
 
-2챕터 예제 도메인 모델
-----------------------
+2챕터 - 예제 도메인 모델
+------------------------
 
 ### 예제 도메인 모델과 동작 확인
 
@@ -106,3 +106,54 @@
 -	@ToString 으로 toString 대체 가능
 
 	-	연관관계가 걸려있는 대상은 대상에 포함시키지 말것 (해당 연관관계에서도 toString으로 무한 반복될 수있음)
+
+---
+
+3챕터 - 공통 인터페이스 기능
+----------------------------
+
+### 순수 JPA 기반 리포지토리 만들기
+
+-	jpa 기반 repository 만든 후 스프링 데이터 JPA 공통인터페이스로 변환하는 과정으로 진행
+
+-	직접 생성한 repository 클래스에 em.persist , em.remove 등 을 통해 구현, 테스트함.
+
+### 공통 인터페이스 설정
+
+-	원래는 applications 위에 어노테이션으로 @EnableJpaRepositories(basePackages = ) 이 필요함. 하지만 부트 사용 시 @SpringBootApplication 위치를 자동 지정함 (해당 패키지와 하위 패키지)
+
+	-	위치가 변경된다면 지정해야함 (대부분 스캔할 것임)
+
+-	MemberRepository 는 jparepository 를 상속받았는데, 구현체가 없음.
+
+	-	출력해보면 class.com.proxy.$Proxy~~ 으로 나옴
+		-	스프링 데이터jpa가 자바의 기본적인 프록시 기술로 가짜 클래스만들고 주입을 해준 것임
+	-	이 인터페이스를 보고 **스프링데이터JPA** 가 구현체를 만들어서 injection을 해줌
+	-	@Repository 생략 가능
+	-	컴포넌트 스캔, JPA를 예외를 스프링 예외로 변환 등 기능
+
+### 공통 인터페이스 적용
+
+-	동일한 테스트 MemberRepository 를 사용해 테스트
+
+### 공통 인터페이스 분석
+
+-	스프링 데이터
+
+	-	스프링 데이터 JPA : JpaRepository (종류에 따라 나누어지는 것을 알 수 있음)
+
+-	주의
+
+	-	T findOne(ID) -> Optional<T> findById(ID) 로 변경
+
+-	주요 메서드
+
+	-	save(S) : 새로운 엔티티는 저장하고 이미 있는 엔티티는 병합한다.
+	-	delete(T) : 엔티티를 하나 삭제한다. 내부에서 EntityManager.remove() 호출
+	-	findById(ID) : 엔티티를 하나 조회한다. 내부에서 EntityManager.find() 호출
+	-	getOne(ID) : 엔티티를 프록시로 조회한다. 내부에서 EntityManager.gerReference() 호출
+	-	findAll(...) : 모든 엔티티를 조회한다. 정렬, 페이징 조건을 파라미터로 제공할 수 있다.
+
+-	참고
+
+	-	JpaRepository는 대부분의 공통메서드를 제공한다.
