@@ -157,3 +157,23 @@
 -	참고
 
 	-	JpaRepository는 대부분의 공통메서드를 제공한다.
+
+4챕터 - 쿼리 메서드 기능
+------------------------
+
+### 메소드 이름으로 쿼리 생성
+
+-	쿼리 메소드 기능
+
+	-	메소드 이름으로 쿼리 생성
+
+-	SPRING DATA 레퍼런스를 보면 다양한 사용조건들을 (and, or 등) 알 수 있음.
+
+	-	https://docs.spring.io/spring-data/jpa/docs/current/reference/html/#repositories.query-methods.query-lookup-strategies
+
+-	스프링 데이터 JPA가 제공하는 쿼리 메소드 기능
+
+-	참고
+
+	-	필드명이 변경되면 인터페이스에 정의한 메서드 이름도 변경해야 함.
+	-	그렇지 않으면 애플리케이션 시적시점에 오류발생함 (로딩시점에 오류를 발견할 수 있으니 큰 장점임!)
