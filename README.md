@@ -177,3 +177,174 @@
 
 	-	필드명이 변경되면 인터페이스에 정의한 메서드 이름도 변경해야 함.
 	-	그렇지 않으면 애플리케이션 시적시점에 오류발생함 (로딩시점에 오류를 발견할 수 있으니 큰 장점임!)
+
+### JPA NamedQuery
+
+-	JPA의 NamedQuery를 호출할 수 있음
+
+	-	쿼리의 이름을 부여하고 호출하는 기능
+
+-	jpa는 관례 이름의 namedquery 찾은 후 없으면 메서드이름으로 쿼리생성함
+
+-	namedquery는 실무에서 거의 사용안함.
+
+	-	엔티티에 있는 것도 이상함...
+	-	repository 메서드에 바로 쿼리를 지정할 수 있는데 이 기능으로 대체가능
+
+-	가장 큰 장점?
+
+	-	em.createQuery 로 쿼리를 작성하는건 문자임. 애플리케이션 실행 시점에는 오타가 있어도 에러가 발견안됨.(사용해야 발견)
+	-	namedQuery는 애플리케이션 로딩 시점에 파싱을해서 오류가 있으면 알려줌!!
+
+### @Query, 리포지토리 메서드에 쿼리 정의하기
+
+-	메서드위에 @Query를 통해 쿼리작성 가능
+
+	-	이것도 애플리케이션 로딩 시점에 에러 발견 가능
+	-	메서드명을 줄일 수 있음
+	-	원하는 쿼리 작성 가능
+
+-	동적 쿼리는 querydsl 이 가장 깔끔하고 유지보수하기 좋음
+
+### @Query, 값, DTO 조회하기
+
+-	실무에서 많이 사용하는 기능 !
+
+-	dto 로 조회가 가능하지만, jpa의 new 명령어 필요함. (패키지명까지 필요)
+
+	-	@Query("select new study.datajpa.dto.MemberDto(m.id, m.username, t.name) from Member m join m.team t")
+	-	querydsl의 편한 대안이 있다고함.
+
+### 파라미터 바인딩
+
+-	jpql을 짤때 위치기반, 이름기반 사용함
+
+	-	가독성과 유지보수를 위해서 가급적이면 이름기반을 사용함
+
+-	위치기반
+
+	-	select m from Member where m.username = ?0
+
+-	이름기반
+
+	-	select m from Member where m.username = :name
+
+-	파라미터 바인딩
+
+	-	Member findMembers(@Param("anme") String name);
+
+-	컬렉션 파라미터 바인딩
+
+	```java
+	@Query("select m from Member m where m.username in :names")
+	List<Member> findByNames(@Param("names") Collection<String> names);
+	```
+
+### 반환 타입
+
+-	스프링 데이터 JPA는 유연한 반환 타입 지원
+
+	-	컬렉션, 단건, 옵셔널 등 가능
+
+-	컬렉션 조회 시 결과 값이 없으면 null이 아니라 빈 컬렉션이 반환된다!
+
+	-	하지만 단건 조회는 null임
+	-	jpa는 없으면 noresult exption이 뜸!! spring data jpa는 exception을 감싸서 값을 반환해줌.
+
+-	단건 조회인데 결과가 2개라면?
+
+	-	exception 발생 -> spring exception으로 변환해서 발생함 (추상화한 예외. 다른 jdbc로 바꿔도 동일한 예외를 준다 느낌!)
+
+-	api문서에 다양한 타입 소개되어 있음
+
+	-	https://docs.spring.io/spring-data/jpa/docs/current/reference/html/#repository-query-return-types
+
+### 순수 JPA 페이징과 정렬
+
+-	순수 JPA에서는 페이징은 어떻게 구현하는 지 예제를 통해 설명함.
+
+	-	.setFirstResult(offset)
+	-	.setMaxResults(limit)
+
+### 스프링 데이터 JPA 페이징과 정렬
+
+-	페이징과 정렬 파라미터
+
+	-	org.springframework.data.domain.Sort : 정렬 기능
+	-	org.springframework.data.domain.Pageable : 페이징 기능
+
+	-	특별한 반환 타입
+
+	-	org.springframework.data.domain.Page : count 쿼리 결과를 포함하는 페이징
+
+		-	page는 0부터 시작임
+
+	-	org.springframework.data.domain.Slice : count 쿼리 없이 다음 페이지만 확인 가능 (3을 주면 +1 결과를 줌. -> limit 4;)
+
+	-	List(자바 컬렉션) : count 쿼리 없이 결과만 반환
+
+-	@Query 안에서 카운트 쿼리를 분리할 수 있음.
+
+	```java
+	@Query(value = "select m from Member m left join m.team t",
+	    countQuery = "select count(m) from Member m")
+	```
+
+-	참고: 결과 값 반환 시 엔티티 그대로 주지말고 dto로 변환해서 줄 것 (엔티티는 숨겨야한다!)
+
+	-	page.map() : 쉽게 dto로 변환하기.
+
+### 벌크성 수정 쿼리
+
+-	jpa는 데이터를 변경하면 변경감지로 인해 commit 시점에 엔티티 한건한건 update 됌
+
+-	모든 데이터의 수정이 필요할땐? 벌크성 수정 쿼리로 사용
+
+-	spring data jpa는 @Modifying 있어야함. (executeUpdate 를 해줌)
+
+-	주의할 점
+
+	-	영속성 컨텍스트를 무시하고 update를 실행하는 것이기 때문에 주의!!
+	-	벌크연산 이후에는 영속성컨텍스트를 날릴 것 ! (flush, clear)
+	-	spring data jpa 는 자동옵션이 있음
+
+		-	@Modifying(clearAutomatically = true)
+
+	-	mybatis 등이랑 섞어 쓸때도 데이터가 안맞을 수 있으니 주의할 것!!
+
+### EntityGraph
+
+-	기본편 강의의 페치조인을 보면 쉽게 이해할 수 있음.
+
+	-	페치조인을 쉽게 사용하는 방법임
+
+-	연관된 엔티티들을 SQL 한번에 조회하는 방법
+
+	-	지연로딩 관계일 때 member 조회 후 team을 조회할 때 마다 쿼리가 실행됨.
+
+-	기존에선 fetch join을 하면 member와 연관된 team을 끌어온다.
+
+-	스프링 데이터 JPA 에서는 @EntityGraph 로 간단하고 깔끔하게 해결 가능
+
+	-	JPA가 제공하는 엔티티 그래프 기능을 편리하게 도와주는 것임
+	-	간단한건 @EntityGraph 쓰고
+	-	복잡해지면 jpql 의 fetch join 으로 사용
+
+### JPA Hint & Lock
+
+-	JPA 쿼리 힌드 (SQL힌드가 아니라 JPA 구현체에게 제공하는 힌트 )
+
+	-	변경감지 시 비용이 든다.
+
+	-	100% 조회만 쓰고 싶다?
+
+	-	@QueryHints(value = @QueryHint(name = "org.hibernate.readOnly", value = "true"))
+
+	-	성능테스트 해보고 사용 결정할 것
+
+	-	막 넣을 필요없음 (효과가 미미할 수 있음)
+
+-	Lock
+
+	-	jpa가 lock을 지원하고 스프링데이터 JPA가 어노테이션을 통해 쉽게 사용할 수 있도록 해준다.
+	-	실시간 트래픽이 많은 곳에서는 lock을 사용하지 말 것
