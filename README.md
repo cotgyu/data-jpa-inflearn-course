@@ -380,3 +380,39 @@
 		-	그냥 class 생성해서 빈으로 등록하고(@Repository) 직접 사용해도된다.
 
 	-	핵심 비즈니스가 있는 리포지토리, 화면에 맞춘 DTO들을 뽑아서 사용하는 리포지토리는 분리하는 편이라고함.
+
+### Auditing
+
+-	엔티티를 생성, 변경할 때 변경한 사람과 시간을 추적하고 싶으면? (아래의 데이터들은 기본적으로 깔고 감)
+
+	-	등록일
+	-	수정일
+	-	등록자
+	-	수정자
+
+-	JPA 주요 어노테이션
+
+	-	@PrePersist, @PostPersist
+	-	@PreUpdate, @PostUpdate
+
+-	스프링 데이터 JPA
+
+	-	부트 설정 클래스에 어노테이션 적용
+		-	@EnableAuditing
+	-	엔티티에 적용
+		-	@EntityListeners(AuditingEntityListener.class)
+
+-	등록자, 수정자는 부트 설정 클래스에 AuditorAware 을 통해 입력될 데이터 지정
+
+	```java
+	@Bean
+	public AuditorAware<String> auditorProvider(){
+	    return () -> Optional.of(UUID.randomUUID().toString());
+	}
+	```
+
+-	baseTimeEntity, baseEntity 형식으로 상속해서 사용 가능
+
+-	참고
+
+	-	예제에서 저장 시점에 등록일, 수정일에 같은 데이터가 저장된다. 데이터가 중복일 지라도 수정일 컬럼만 확인하면 마지막 업데이트 데이터를 확인할 수 있으니 유지보수 관점에서 편리함.
