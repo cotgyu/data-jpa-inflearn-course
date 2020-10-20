@@ -415,4 +415,96 @@
 
 -	참고
 
-	-	예제에서 저장 시점에 등록일, 수정일에 같은 데이터가 저장된다. 데이터가 중복일 지라도 수정일 컬럼만 확인하면 마지막 업데이트 데이터를 확인할 수 있으니 유지보수 관점에서 편리함.
+	-	예제에서 저장 시점에 등록일, 수정일에 같은 데이터가 저장된다. 데이터가 중복일 지라도 수정일 컬럼만 확인하면 마지막 업데이트 데이터를 확인할 수 있으니 유지보수 관점에서 편리함. (null은 피하자)
+
+### Web 확장 - 도메인 클래스 컨버터
+
+-	HTTP 파라미터로 넘어온 엔티티의 아이디로 엔티티 객체를 찾아서 바인딩
+
+	-	HTTP 요청은 회원 ID 로 받지만 도메인 클래스 컨버터가 중간에 동작에서 회원 엔티티 객체를 반환해줌
+	-	도메인 클래스 컨버터도 리파지토리르 사용해서 엔티티를 찾는다.
+
+	```java
+	@GetMapping("/members/{id}")
+	public String findMember(@PathVariable("id") Long id){
+	    Member member = memberRepository.findById(id).get();
+	    return member.getUsername();
+	}
+
+
+	@GetMapping("/members/{id}")
+	public String findMember2(@PathVariable("id") Member member){
+
+
+	    return member.getUsername();
+	}
+	```
+
+-	개인적으로 권장하지는 않는다고함.
+
+	-	쿼리가 단순하게 동작하는 방식이 많지는 않음.
+	-	간단할 때만 사용 가능
+	-	컨버토로 받으면 트랜잭션범위가 없는 상황에서 조회했으므로 애매함.. 조회용으로만 사용 가능
+
+### Web 확장 - 페이징과 정렬
+
+-	스프링 데이터가 제공하는 페이징과 정렬기능을 스프링 MVC에서 편리하게 사용할 수 있음
+
+	```java
+	@GetMapping("/members")
+	public Page<MemberDto> list(@PageableDefault(size = 5) Pageable pageable){
+	    return memberRepository.findAll(pageable)
+	            .map(MemberDto::new);
+	}
+	```
+
+-	파라미터로 Pageable을 받는데, 인터페이스임 (실제는 PageRequest 객체 생성)
+
+-	요청 파라미터
+
+	-	/members?page=0&size=3&sort=id,desc&sort=username,desc
+
+-	기본 값 조절하기
+
+	-	글로벌 설정 (application.yml)
+
+		```text
+		data:
+		  web:
+		    pageable:
+		      default-page-size: 10
+		      max-page-size: 2000
+		```
+
+	-	개별 설정
+
+		-	@PageableDefault(size = 5)
+
+-	접두사
+
+	-	페이징 정보가 둘 이상이면 접두사로 구분
+
+	```java
+	public String list(
+	@Qualifier("member") Pageable memberPageable,
+	@Qualifier("order") Pageable orderPageable,
+	...)
+	```
+
+-	Page 내용 DTO로 변환
+
+	-	엔티티를 API로 노출하면 다양한 문제가 발생함. 엔티테를 꼭 DTO로 변환해서 반환해야 함
+
+	```java
+	return memberRepository.findAll(pageable)
+	              .map(MemberDto::new);
+	```
+
+-	Page 1부터 시작하기
+
+	-	스프링 데이터는 Page를 0부터 시작함
+	-	1부터 쓰고싶으면?
+		-	Pageable, Page 말고 직접 클래스를 만들어서 처리
+	-	one-indexed-parameters 옵션 true 설정 (Page 의 값들이 0 인덱스 기준이어서 맞지않음)
+
+	-	결국 0부터 사용을 권장
