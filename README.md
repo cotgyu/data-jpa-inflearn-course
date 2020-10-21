@@ -508,3 +508,81 @@
 	-	one-indexed-parameters 옵션 true 설정 (Page 의 값들이 0 인덱스 기준이어서 맞지않음)
 
 	-	결국 0부터 사용을 권장
+
+6챕터 - 스프링 데이터 JPA 분석
+------------------------------
+
+### 스프링 데이터 JPA 구현체 분석
+
+-	스프링 데이터 JPA가 제공하는 공통 인터페이스의 구현체
+
+	-	SimpleJpaRepository
+	-	jpa 내부 기능을 활용해서 동작함
+
+	-	exception 에 대해 스프링이 제공하는 exception으로 발생됨 (하부 구현기술을 바꿔도 기존 비즈니스 로직에 영향을 주지 않도록 감싸준다)
+
+	-	모든 JPA는 트랜잭션안에서 동작해야하지만, 스프링 데이터 JPA 사용해서 save를 하면 트랜잭션 없이 실행이 된다.
+
+		-	구현체 내부에 걸려있음
+
+		-	서비스계층에서 트랜잭션 시작안하면 리파지토리에서 시작
+
+		-	서비스계층에서 트랜잭션 시작하면 리파지토리는 그 트랜잭션 전파받아 사용
+
+-	참고 : @Transactional(readOnly = true)
+
+	-	데이터를 단순히 조회하고 변경하지 않는 트랜잭션에서 해당 옵션을 사용하면 플러시를 생략해서 약간의 성능 향상을 얻을 수 있음
+
+-	**중요** save 메서드
+
+	-	새로운 엔티티면 저장(persist)
+	-	새로운 엔티티가 아니면 병합(merge)
+		-	DB에서 꺼내서 파라미터로 넘어온 새로운 것으로 바뀜
+		-	DB select를 한번 한다는 것이 단점
+		-	되도록이면 쓰지말것... 업데이트는 변경감지로 사용!!!
+	-	merge는 영속상태 엔티티가 특정 이유로 영속상태에 벗어났을 때 다시 영속상태가 되어야할 때 써야함
+
+### 새로운 엔티티를 구별하는 방법
+
+-	save 메서드
+
+-	새로운 엔티티를 판단하는 기본 전략
+
+	-	식별자가 객체일 때 null로 판단
+	-	식별자가 자바 기본 타입일 때 0 으로 판단
+	-	Persistable 인터페이스를 구현해서 판단 로직 변경 가능
+
+-	참고
+
+	-	JPA 식별자 생성 전략이 @GenerateValue 면 save 호출 시점에 식별자가 없으므로 새로운 엔티티로 인식해서 persit 동작함.
+	-	JPA 식별자 생성 전략이 @Id만 사용해서 직접할당이면 이미 식별자 값이 있는 상태로 save가 호출되기 때문데 merge가 호출된다 (기본 전략)
+		-	merge는 DB를 호출해서 값을 확인하고 DB에 값이 없으면 새로운 엔티티로 인지하므로 매우 비효율
+	-	따라서 이 경우 Persistable을 사용해서 새로운 엔티티 확인여부를 직접 구현해야 함 (@CreatedDate 를 활용하면 편리하게 확인 가능)
+
+```java
+@Entity
+@EntityListeners(AuditingEntityListener.class)
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Item implements Persistable<String> {
+
+    @Id @GeneratedValue
+    private String id;
+
+    @CreatedDate
+    private LocalDateTime createdDate;
+
+    public Item(String id) {
+        this.id = id;
+    }
+
+    @Override
+    public String getId() {
+        return id;
+    }
+
+    @Override
+    public boolean isNew() {
+        return createdDate == null;
+    }
+}
+```
