@@ -586,3 +586,104 @@ public class Item implements Persistable<String> {
     }
 }
 ```
+
+6챕터 - 나머지 기능들
+---------------------
+
+### Specifications 명세
+
+-	6챕터는 실무에서 다른 대안이 있으니 가볍게 들어도 됨
+
+-	스프링 데이터 JPA는 JPA Criteria를 활용해서 명세 개념을 사용할 수 있도록 지원
+
+	-	잘 안씀. (코드가 너무 복잡해짐)
+
+-	술어 (predicate)
+
+	-	참 또는 거짓으로 평가
+	-	AND OR 같은 연산자로 조합해서 다양한 검색조건을 자바로 쉽게 생성(컴포지트 패턴)
+	-	ex) 검색 조건 하나하나
+	-	스프링 데이터 JPA는 Specification 클래스로 정의
+
+-	명세를 정의하려면 Specification 인터페이스를 구현
+
+	-	**실무에서는 JPA Criteria를 거의 안씀. 대신 QueryDSL을 사용할 것!**
+
+### Query By Example
+
+-	ExampleMatcher : 특정 필드를 일치시키는 상세한 정보 제공, 재사용 가능
+-	Example : Probe와 ExampleMatcher로 구성, 쿼리를 생성하는데 사용
+
+-	장점
+
+	-	동적쿼리를 편리하게 처리
+	-	도메인 객체를 그대로 사용
+	-	데이터 저장소를 RDM에서 NOSQL로 변경해도 코드 변경이 없게 추상화 되어 있음
+	-	스프링 데이터 JPA의 JpaRepository 인터페이스에 이미 포함
+
+-	단점
+
+	-	조인은 가능하지만 INNER JOIN만 가능함. LEFT JOIN 안됨
+	-	중첩 제약조건이 안됨
+
+		-	firstname = ?0 or (firstname ?1 and lastname = ?2)
+
+	-	매칭 조건이 매우 단순함
+
+		-	문자는 starts/contains/ends/regex
+
+		-	다른 속성은 정확한 매핑 = 만 지원
+
+-	정리
+
+	-	실무에서 사용하기에는 매핑 조건이 너무 단순하고, LEFT 조인이 안됨
+	-	**실무에서는 QueryDSL 을 사용하자**
+
+### Projections
+
+-	엔티티 대신에 DTO를 편리하게 조회할 때 사용
+-	전체 엔티티가 아니라 회원 이름만 딱 조회하고 싶으면 ?
+
+	-	조회할 엔티티의 필드를 getter 형식으로 지정하여 해당 필드만 선택해서 조회(Projection)
+
+-	주의
+
+	-	프로젝션 대상이 root 엔티티면, JPQL SELECT 절 최적화 가능
+	-	프로젝션 대상이 ROOT가 아니면
+		-	LEFT OUTER JOIN 처리
+		-	모든 필드를 SELECT해서 엔티티로 조회한 다음에 계산
+
+-	정리
+
+	-	프로젝션 대상이 root 엔티티면 유용하다.
+	-	프로젝션 대상이 root 엔티티를 넘어가면 JPQL SELECT 최적화가 안된다.
+	-	실무의 복잡한 쿼리가 해결하기엔 한계가 있다.
+	-	실무에서는 단순할 때만 사용하고, 조금만 복잡해지면 QueryDSL을 사용하자
+
+### 네이티브 쿼리
+
+-	JPA가 제공하는 기능. SQL 을 직접 ..
+-	가급적 사용하지 말 것. 정말 어쩔 수 없을 때 사용
+-	최근에 나온 궁극적인 방법 -> 스프링 데이터 Projections 활용
+
+-	스프링 데이터 JPA 기반 네이티브 쿼리
+
+	-	페이징 지원
+	-	반환 타입
+
+		-	Object[]
+		-	Tuple
+		-	DTO(스프링 데이터 인터페이스 Projections 지원)
+
+	-	제약
+
+		-	Sort 파라미터를 통한 정렬이 정상 동작하지 않을 수 있음 (믿지말고 직접 처리)
+		-	JPQL 처럼 애플리케이션 로딩 시점에 문법 확인 불가
+		-	동적 쿼리 불가
+
+-	Projections 활용
+
+-	동적 네이티브 쿼리
+
+	-	하이버네이트를 직접 사용
+	-	스프링 JdbcTemplate, myBatis, jooq 같은 외부 라이브러리 사용 권장
